@@ -1,7 +1,7 @@
 # SilverStripe Cheatsheet
 Mission of this repo is simple. Syntax limited people like me can easily find basic code snippets for creating SilverStripe websites and projects without crawling old and already created code. I am a happy man if somebody else find this useful.
 
-## Template snippets
+## SS Template snippets
 ### Theme structure
 ```
 themes
@@ -20,12 +20,12 @@ themes
 ### Basic \<head>
 ```html
 <% base_tag %>
-<% require themedCSS('styles') %>
+<% require themedCSS('STYLE_FILE_NAME') %>
 <title><% if ID == 1 %>$SiteConfig.Title<% else %>$SiteConfig.Title | $Title<% end_if %></title>
 <script src="$ThemeDir/js/FILE_NAME.js"></script>
 ```
 
-### Meta for \<head>
+### Meta and favicon for \<head>
 ```html
 <link rel="shortcut icon" href="$ThemeDir/images/favicon.ico" />
 
@@ -62,11 +62,114 @@ themes
 <% include NAME %>
 ```
 
-### Loop
+### Menu
 ```html
-<% loop STUFF %>
-  <div class="item">
-    $Name
-  </div>
+<% loop $Menu(1) %>
+    <a href="$Link" class="navi-link $LinkingMode">$Title.XML</a>
+    <% control Children %>
+        <a href="$Link" class="secondary-navi-link $LinkingMode">$Title.XML</a>
+    <% end_control %>
 <% end_loop %>
+```
+
+## PHP Page snippets
+### Page.php with header image and fetching image with custom width
+```php
+<?php
+class Page extends SiteTree {
+	private static $has_one = array(
+		'HeaderImage' => 'Image'
+	);
+	
+	public function OptimizedHeaderImage() {
+		if ($this->HeaderImage()->exists()) {
+		  return $this->HeaderImage()->SetWidth(CUSTOM_WIDTH);
+		} else {
+		  return null;
+		}
+	}
+
+	public function getCMSFields() {
+		$fields = parent::getCMSFields();
+		
+		$fields->addFieldToTab("Root.Main", new UploadField('HeaderImage', 'Header Image'), "Content");
+		
+		return $fields;
+	}
+}
+```
+
+### Custom dataobject with thumbnail image and Page as "holder"
+```php
+<?php
+class CustomDataObject extends DataObject {
+    static $singular_name = 'Custom';
+    static $plural_name = 'Customs';
+    
+    static $db = array(
+        'Name' => 'Varchar',
+        'Description' => 'HTMLText',
+        'SortOrder'=>'Int'
+    );
+    
+    static $has_one = array(
+        'Holder' => 'Page',
+        'Image' => 'Image'
+    );
+    
+    public function Thumbnail(){ 
+        return $this->Image()->SetHeight(50); 
+    }
+    
+    public function getCMSFields() {
+        return new FieldList(
+            new TextField('Name', 'Name'),
+            new HTMLEditorField('Description', 'Description'),
+            new UploadField('Image', 'Image')
+        );
+    }
+    
+    public static $default_sort='SortOrder';
+}
+```
+
+### Custom Page with some CMS config and list of custom data objects
+```php
+<?php
+class CustomPage extends Page {
+    static $icon = "URL_TO_PAGE_ICON";
+    static $singular_name = "PAGE_NAME";
+    static $plural_name = "PAGE_NAME_PLURAL";
+    static $description = 'PAGE_DESCRIPTION'; 
+    
+    static $has_many = array(
+		  'CustomDataObjects' => 'CustomDataObject'
+    );
+    
+    public function getCMSFields() {
+        $fields = parent::getCMSFields();
+        
+        $config = GridFieldConfig_RecordEditor::create();
+        
+        // GridFieldExtensions needed for orderable rows
+        $config->addComponent(new GridFieldOrderableRows('SortOrder'));
+        
+        $config->getComponentByType('GridFieldDataColumns')->setDisplayFields(array(
+			'Thumbnail' => 'Image',
+            'Name' => 'Name',
+			'Description' => 'Description'
+        ));
+		
+        $customDataObjectsField = new GridField(
+            'CustomDataObject',
+            'CustomDataObjects',
+            $this->CustomDataObjects(),
+            $config
+        );
+        
+        $fields->addFieldToTab('Root.TAB_NAME', $customDataObjectsField); 
+        
+        return $fields;
+    }
+}
 ```
