@@ -13,8 +13,8 @@ themes
 --- Includes
 ---- file.ss
 --- Layout
----- page.ss
---- page.ss
+---- Page.ss
+--- Page.ss
 ```
 
 ### Basic \<head>
